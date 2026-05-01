@@ -1,4 +1,4 @@
-name: Setup Hugo + Blowfish
+name: Setup Blowfish Config
 
 on:
   workflow_dispatch:
@@ -8,41 +8,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (with submodules)
         uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: true
           fetch-depth: 0
 
-      - name: Setup Hugo Extended 0.155.3
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: '0.155.3'
-          extended: true
-
-      - name: Verify Hugo installation
-        run: hugo version
-
-      - name: Initialize Hugo site (if empty)
+      - name: Download Blowfish config (v2.100.0)
         run: |
-          if [ ! -f "hugo.toml" ] && [ ! -f "config.toml" ] && [ ! -f "config.yaml" ]; then
-            hugo new site . --force
-          fi
+          wget https://github.com/nunocoracao/blowfish/releases/download/v2.100.0/config-default.zip -O config-default.zip
 
-      - name: Add Blowfish theme as submodule (v2.100.0)
+      - name: Extract config into temp folder
         run: |
-          git submodule add https://github.com/nunocoracao/blowfish.git themes/blowfish
-          cd themes/blowfish
-          git fetch --tags
-          git checkout v2.100.0
-          cd ../..
+          mkdir -p tmp-config
+          unzip config-default.zip -d tmp-config
 
-      - name: Commit initial Hugo setup
+      - name: Move config into Hugo project
+        run: |
+          mkdir -p config
+          rm -rf config/_default
+          mv tmp-config/config/_default config/_default
+
+      - name: Cleanup archive
+        run: rm config-default.zip
+
+      - name: Commit config files
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add .
-
-          git commit -m "Initial Hugo setup with Blowfish v2.100.0" || echo "No changes to commit"
+          git add config/_default
+          git commit -m "Add Blowfish v2.100.0 default config" || echo "No changes to commit"
           git push
